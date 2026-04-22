@@ -20,6 +20,7 @@
       width: 100vw;
       height: 100vh;
       background: #0a0a0f;
+      touch-action: manipulation;
     }
 
     .loading {
@@ -40,52 +41,236 @@
       pointer-events: none;
     }
 
-    .hud {
+    .loading.error {
+      padding: 24px;
+      color: #ffd6e7;
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .app-overlay {
       position: fixed;
-      top: 18px;
-      left: 18px;
+      top: 20px;
+      right: 20px;
+      left: 20px;
       z-index: 1;
-      display: grid;
-      gap: 5px;
-      min-width: 132px;
-      padding: 10px 12px;
-      color: rgba(244, 251, 255, 0.9);
-      background: rgba(10, 10, 15, 0.44);
-      border: 1px solid rgba(0, 245, 255, 0.22);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+    }
+
+    .hud,
+    .instructions,
+    .music-controls {
+      box-sizing: border-box;
+      color: rgba(244, 251, 255, 0.82);
+      background: rgba(10, 10, 15, 0.52);
+      border: 1px solid rgba(0, 245, 255, 0.16);
       border-radius: 8px;
-      box-shadow: 0 0 28px rgba(0, 245, 255, 0.12);
-      font-size: 12px;
+      box-shadow: 0 0 24px rgba(0, 245, 255, 0.1);
+      font-size: 11px;
       line-height: 1.2;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.045em;
       text-transform: uppercase;
+      user-select: none;
       backdrop-filter: blur(14px);
+    }
+
+    .hud {
+      display: grid;
+      gap: 7px;
+      width: 170px;
+      padding: 12px;
+      border-color: rgba(0, 245, 255, 0.2);
+      box-shadow: 0 0 28px rgba(0, 245, 255, 0.12);
+    }
+
+    .hud-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-width: 0;
+      color: rgba(244, 251, 255, 0.66);
+      white-space: nowrap;
     }
 
     .hud-value {
       color: #f4fbff;
+      text-align: right;
       text-shadow: 0 0 10px rgba(0, 245, 255, 0.58);
     }
 
-    .instructions {
-      position: fixed;
-      top: 18px;
-      right: 18px;
-      z-index: 1;
+    .controls-stack {
       display: grid;
-      gap: 5px;
-      padding: 10px 12px;
+      grid-template-columns: 150px 196px;
+      align-items: start;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .instructions {
+      display: grid;
+      gap: 7px;
+      width: 150px;
+      padding: 12px;
       color: rgba(244, 251, 255, 0.72);
-      background: rgba(10, 10, 15, 0.34);
       border: 1px solid rgba(244, 251, 255, 0.12);
-      border-radius: 8px;
       box-shadow: 0 0 24px rgba(76, 0, 255, 0.1);
-      font-size: 11px;
-      line-height: 1.25;
-      letter-spacing: 0.04em;
       text-align: right;
+      pointer-events: none;
+    }
+
+    .music-controls {
+      display: grid;
+      gap: 10px;
+      width: 196px;
+      padding: 12px;
+      color: rgba(244, 251, 255, 0.82);
+      pointer-events: auto;
+    }
+
+    .music-controls label {
+      display: grid;
+      gap: 4px;
+    }
+
+    .music-controls .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .music-controls select,
+    .music-controls button,
+    .music-controls a {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(244, 251, 255, 0.16);
+      border-radius: 6px;
+      min-height: 30px;
+      padding: 6px 8px;
+      color: #f4fbff;
+      background: rgba(244, 251, 255, 0.08);
+      font: inherit;
+      letter-spacing: 0.02em;
       text-transform: uppercase;
+    }
+
+    .music-controls button,
+    .music-controls a {
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .music-controls button:disabled {
+      cursor: default;
+      opacity: 0.58;
+    }
+
+    .music-controls input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: #168cff;
+    }
+
+    .music-controls .hidden {
+      display: none;
+    }
+
+    .status {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      z-index: 1;
+      max-width: min(520px, calc(100vw - 32px));
+      padding: 9px 12px;
+      color: rgba(244, 251, 255, 0.86);
+      background: rgba(10, 10, 15, 0.52);
+      border: 1px solid rgba(0, 245, 255, 0.18);
+      border-radius: 8px;
+      box-shadow: 0 0 24px rgba(0, 245, 255, 0.1);
+      font-size: 12px;
+      line-height: 1.3;
+      letter-spacing: 0.04em;
+      text-align: center;
+      text-transform: uppercase;
+      transform: translateX(-50%);
       pointer-events: none;
       backdrop-filter: blur(12px);
+    }
+
+    .status.hidden {
+      display: none;
+    }
+
+    .status.warning {
+      color: #ffe7a6;
+      border-color: rgba(255, 231, 166, 0.26);
+      box-shadow: 0 0 24px rgba(255, 231, 166, 0.12);
+    }
+
+    @media (max-width: 760px) {
+      .app-overlay {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        display: grid;
+        grid-template-columns: minmax(112px, 1fr) minmax(172px, 188px);
+        gap: 10px;
+      }
+
+      .hud {
+        width: auto;
+        min-width: 0;
+        padding: 9px 10px;
+        font-size: 10px;
+      }
+
+      .controls-stack {
+        justify-self: end;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        width: min(188px, 100%);
+      }
+
+      .instructions {
+        width: 100%;
+        padding: 9px 10px;
+        font-size: 10px;
+      }
+
+      .music-controls {
+        width: 100%;
+        padding: 9px 10px;
+        font-size: 10px;
+      }
+
+      .status {
+        bottom: 86px;
+        font-size: 10px;
+      }
+    }
+
+    @media (max-width: 340px) {
+      .app-overlay {
+        grid-template-columns: 1fr;
+      }
+
+      .controls-stack {
+        justify-self: stretch;
+        width: 100%;
+      }
+
+      .instructions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        text-align: left;
+      }
     }
 
     video {
@@ -95,19 +280,46 @@
 </head>
 <body>
   <div id="loading" class="loading">Loading model...</div>
-  <div id="hud" class="hud">
-    <div>Note <span id="noteLabel" class="hud-value">A</span></div>
-    <div>Octave <span id="octaveLabel" class="hud-value">3</span></div>
-    <div>Osc <span id="oscillatorLabel" class="hud-value">sine</span></div>
-    <div>Audio <span id="audioLabel" class="hud-value">click</span></div>
+  <div class="app-overlay">
+    <div id="hud" class="hud">
+      <div class="hud-row">Note <span id="noteLabel" class="hud-value">A</span></div>
+      <div class="hud-row">Octave <span id="octaveLabel" class="hud-value">3</span></div>
+      <div class="hud-row">Osc <span id="oscillatorLabel" class="hud-value">sine</span></div>
+      <div class="hud-row">Audio <span id="audioLabel" class="hud-value">click</span></div>
+    </div>
+    <div class="controls-stack">
+      <div class="instructions" aria-label="Controls">
+        <div>Click: audio</div>
+        <div>Left Y: pitch</div>
+        <div>Right Y: volume</div>
+        <div>Right X: reverb</div>
+        <div>Space: wave</div>
+        <div>Rec: 15s clip</div>
+      </div>
+      <div class="music-controls" aria-label="Music controls">
+        <label>
+          Scale
+          <select id="scaleSelect">
+            <option value="a-minor-pentatonic">A minor pent</option>
+            <option value="a-major-pentatonic">A major pent</option>
+            <option value="a-blues">A blues</option>
+            <option value="chromatic">Chromatic</option>
+          </select>
+        </label>
+        <label class="toggle-row">
+          Delay
+          <input id="delayToggle" type="checkbox">
+        </label>
+        <label class="toggle-row">
+          Gate
+          <input id="gateToggle" type="checkbox" checked>
+        </label>
+        <button id="recordButton" type="button">Rec 15s</button>
+        <a id="downloadLink" class="hidden" download="air-theremin.webm">Download</a>
+      </div>
+    </div>
   </div>
-  <div class="instructions" aria-label="Controls">
-    <div>Click: audio</div>
-    <div>Left Y: pitch</div>
-    <div>Right Y: volume</div>
-    <div>Right X: reverb</div>
-    <div>Space: wave</div>
-  </div>
+  <div id="status" class="status hidden" role="status" aria-live="polite"></div>
   <video id="webcam" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
@@ -122,6 +334,12 @@
     const octaveLabel = document.getElementById("octaveLabel");
     const oscillatorLabel = document.getElementById("oscillatorLabel");
     const audioLabel = document.getElementById("audioLabel");
+    const status = document.getElementById("status");
+    const scaleSelect = document.getElementById("scaleSelect");
+    const delayToggle = document.getElementById("delayToggle");
+    const gateToggle = document.getElementById("gateToggle");
+    const recordButton = document.getElementById("recordButton");
+    const downloadLink = document.getElementById("downloadLink");
 
     const HAND_CONNECTIONS = [
       [0, 1], [1, 2], [2, 3], [3, 4],
@@ -137,26 +355,85 @@
     const MAX_OSCILLATOR_2_GAIN = 0.8;
     const MAX_REVERB_MIX = 0.6;
     const OSCILLATOR_1_GAIN = 0.18;
-    const RAMP_SECONDS = 0.05;
+    const PARAM_RAMP_SECONDS = 0.05;
+    const ATTACK_SECONDS = 0.08;
+    const RELEASE_SECONDS = 0.2;
+    const VOLUME_GATE_THRESHOLD = 0.06;
+    const DELAY_WET_GAIN = 0.28;
+    const RECORDING_SECONDS = 15;
     const NO_HANDS_FADE_DELAY_MS = 200;
-    const A_MINOR_PENTATONIC = [
-      { frequency: 110, note: "A", octave: 2 },
-      { frequency: 130.8, note: "C", octave: 3 },
-      { frequency: 146.8, note: "D", octave: 3 },
-      { frequency: 164.8, note: "E", octave: 3 },
-      { frequency: 196, note: "G", octave: 3 },
-      { frequency: 220, note: "A", octave: 3 },
-      { frequency: 261.6, note: "C", octave: 4 },
-      { frequency: 293.7, note: "D", octave: 4 },
-      { frequency: 329.6, note: "E", octave: 4 },
-      { frequency: 392, note: "G", octave: 4 },
-      { frequency: 440, note: "A", octave: 4 },
-      { frequency: 523.3, note: "C", octave: 5 },
-      { frequency: 587.3, note: "D", octave: 5 },
-      { frequency: 659.3, note: "E", octave: 5 },
-      { frequency: 784, note: "G", octave: 5 },
-      { frequency: 880, note: "A", octave: 5 }
-    ];
+    const SCALE_DEFINITIONS = {
+      "a-minor-pentatonic": {
+        label: "A minor pent",
+        notes: [
+          { frequency: 110, note: "A", octave: 2 },
+          { frequency: 130.8, note: "C", octave: 3 },
+          { frequency: 146.8, note: "D", octave: 3 },
+          { frequency: 164.8, note: "E", octave: 3 },
+          { frequency: 196, note: "G", octave: 3 },
+          { frequency: 220, note: "A", octave: 3 },
+          { frequency: 261.6, note: "C", octave: 4 },
+          { frequency: 293.7, note: "D", octave: 4 },
+          { frequency: 329.6, note: "E", octave: 4 },
+          { frequency: 392, note: "G", octave: 4 },
+          { frequency: 440, note: "A", octave: 4 },
+          { frequency: 523.3, note: "C", octave: 5 },
+          { frequency: 587.3, note: "D", octave: 5 },
+          { frequency: 659.3, note: "E", octave: 5 },
+          { frequency: 784, note: "G", octave: 5 },
+          { frequency: 880, note: "A", octave: 5 }
+        ]
+      },
+      "a-major-pentatonic": {
+        label: "A major pent",
+        notes: [
+          { frequency: 110, note: "A", octave: 2 },
+          { frequency: 123.5, note: "B", octave: 2 },
+          { frequency: 138.6, note: "C#", octave: 3 },
+          { frequency: 164.8, note: "E", octave: 3 },
+          { frequency: 185, note: "F#", octave: 3 },
+          { frequency: 220, note: "A", octave: 3 },
+          { frequency: 246.9, note: "B", octave: 3 },
+          { frequency: 277.2, note: "C#", octave: 4 },
+          { frequency: 329.6, note: "E", octave: 4 },
+          { frequency: 370, note: "F#", octave: 4 },
+          { frequency: 440, note: "A", octave: 4 },
+          { frequency: 493.9, note: "B", octave: 4 },
+          { frequency: 554.4, note: "C#", octave: 5 },
+          { frequency: 659.3, note: "E", octave: 5 },
+          { frequency: 740, note: "F#", octave: 5 },
+          { frequency: 880, note: "A", octave: 5 }
+        ]
+      },
+      "a-blues": {
+        label: "A blues",
+        notes: [
+          { frequency: 110, note: "A", octave: 2 },
+          { frequency: 130.8, note: "C", octave: 3 },
+          { frequency: 146.8, note: "D", octave: 3 },
+          { frequency: 155.6, note: "Eb", octave: 3 },
+          { frequency: 164.8, note: "E", octave: 3 },
+          { frequency: 196, note: "G", octave: 3 },
+          { frequency: 220, note: "A", octave: 3 },
+          { frequency: 261.6, note: "C", octave: 4 },
+          { frequency: 293.7, note: "D", octave: 4 },
+          { frequency: 311.1, note: "Eb", octave: 4 },
+          { frequency: 329.6, note: "E", octave: 4 },
+          { frequency: 392, note: "G", octave: 4 },
+          { frequency: 440, note: "A", octave: 4 },
+          { frequency: 523.3, note: "C", octave: 5 },
+          { frequency: 587.3, note: "D", octave: 5 },
+          { frequency: 622.3, note: "Eb", octave: 5 },
+          { frequency: 659.3, note: "E", octave: 5 },
+          { frequency: 784, note: "G", octave: 5 },
+          { frequency: 880, note: "A", octave: 5 }
+        ]
+      },
+      chromatic: {
+        label: "Chromatic",
+        notes: buildChromaticScale(45, 81)
+      }
+    };
     const OSCILLATOR_TYPES = ["sine", "triangle", "sawtooth"];
     const DARK_BACKGROUND = "#0a0a0f";
     const DEEP_VIOLET = { r: 76, g: 0, b: 255 };
@@ -178,16 +455,41 @@
     let convolver;
     let dryGain;
     let wetGain;
+    let delayNode;
+    let delayFeedbackGain;
+    let delayWetGain;
     let analyser;
     let waveformData;
+    let recordDestination;
+    let mediaRecorder;
+    let recordingTimeout;
+    let recordingUrl;
     let audioStarted = false;
     let audioStarting = false;
     let lastPitchY = 0.5;
-    let currentPitchNote = A_MINOR_PENTATONIC[5];
+    let currentScaleKey = "a-minor-pentatonic";
+    let currentPitchNote = SCALE_DEFINITIONS[currentScaleKey].notes[5];
     let oscillatorTypeIndex = 0;
+    let delayEnabled = false;
+    let gateEnabled = true;
     let lastHandsDetectedTime = 0;
     let frameCount = 0;
     const fingertipTrails = new Map();
+
+    function buildChromaticScale(minMidi, maxMidi) {
+      const noteNames = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+      const notes = [];
+
+      for (let midi = minMidi; midi <= maxMidi; midi += 1) {
+        notes.push({
+          frequency: Number((440 * 2 ** ((midi - 69) / 12)).toFixed(1)),
+          note: noteNames[midi % 12],
+          octave: Math.floor(midi / 12) - 1
+        });
+      }
+
+      return notes;
+    }
 
     function clamp(value, min, max) {
       return Math.min(Math.max(value, min), max);
@@ -216,12 +518,14 @@
       return MAX_FREQUENCY * (MIN_FREQUENCY / MAX_FREQUENCY) ** clampedY;
     }
 
-    function quantizeToPentatonic(frequency) {
-      return A_MINOR_PENTATONIC.reduce((closest, candidate) => {
+    function quantizeToCurrentScale(frequency) {
+      const notes = SCALE_DEFINITIONS[currentScaleKey].notes;
+
+      return notes.reduce((closest, candidate) => {
         return Math.abs(candidate.frequency - frequency) < Math.abs(closest.frequency - frequency)
           ? candidate
           : closest;
-      }, A_MINOR_PENTATONIC[0]);
+      }, notes[0]);
     }
 
     function mapYToOscillator2Gain(y) {
@@ -238,7 +542,21 @@
       oscillatorLabel.textContent = OSCILLATOR_TYPES[oscillatorTypeIndex];
     }
 
-    function rampAudioParam(audioParam, value) {
+    let statusClearTimer;
+
+    function setStatus(message, type = "info", timeoutMs = 0) {
+      window.clearTimeout(statusClearTimer);
+      status.textContent = message;
+      status.className = `status ${type === "warning" ? "warning" : ""}`;
+
+      if (timeoutMs > 0) {
+        statusClearTimer = window.setTimeout(() => {
+          status.classList.add("hidden");
+        }, timeoutMs);
+      }
+    }
+
+    function rampAudioParam(audioParam, value, duration = PARAM_RAMP_SECONDS) {
       if (!audioContext) {
         return;
       }
@@ -252,7 +570,7 @@
         audioParam.setValueAtTime(currentValue, now);
       }
 
-      audioParam.linearRampToValueAtTime(value, now + RAMP_SECONDS);
+      audioParam.linearRampToValueAtTime(value, now + duration);
     }
 
     function createReverbImpulseResponse(context) {
@@ -292,6 +610,122 @@
       applyOscillatorType();
     }
 
+    function setScale(scaleKey) {
+      if (!SCALE_DEFINITIONS[scaleKey]) {
+        return;
+      }
+
+      currentScaleKey = scaleKey;
+      currentPitchNote = quantizeToCurrentScale(mapYToFrequency(lastPitchY));
+
+      if (oscillator1) {
+        rampAudioParam(oscillator1.frequency, currentPitchNote.frequency);
+      }
+
+      updateHud();
+      setStatus(`${SCALE_DEFINITIONS[currentScaleKey].label} scale`, "info", 1200);
+    }
+
+    function setDelayEnabled(enabled) {
+      delayEnabled = enabled;
+      delayToggle.checked = enabled;
+
+      if (delayWetGain) {
+        rampAudioParam(delayWetGain.gain, enabled ? DELAY_WET_GAIN : 0);
+      }
+
+      setStatus(enabled ? "Delay on" : "Delay off", "info", 900);
+    }
+
+    function setGateEnabled(enabled) {
+      gateEnabled = enabled;
+      gateToggle.checked = enabled;
+      setStatus(enabled ? "Volume gate on" : "Volume gate off", "info", 900);
+    }
+
+    function getRecordingMimeType() {
+      const mimeTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4"
+      ];
+
+      return mimeTypes.find((mimeType) => {
+        return window.MediaRecorder && MediaRecorder.isTypeSupported(mimeType);
+      }) || "";
+    }
+
+    function finishRecording(chunks) {
+      const mimeType = mediaRecorder?.mimeType || getRecordingMimeType() || "audio/webm";
+      const blob = new Blob(chunks, { type: mimeType });
+
+      if (recordingUrl) {
+        URL.revokeObjectURL(recordingUrl);
+      }
+
+      recordingUrl = URL.createObjectURL(blob);
+      const extension = mimeType.includes("mp4") ? "m4a" : "webm";
+      downloadLink.href = recordingUrl;
+      downloadLink.download = `air-theremin-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
+      downloadLink.classList.remove("hidden");
+      recordButton.disabled = false;
+      recordButton.textContent = "Rec 15s";
+      setStatus("Recording ready", "info", 2200);
+    }
+
+    async function recordClip() {
+      if (mediaRecorder?.state === "recording") {
+        return;
+      }
+
+      await startAudio();
+
+      if (!audioStarted || !recordDestination) {
+        setStatus("Audio unavailable", "warning", 1800);
+        return;
+      }
+
+      if (!window.MediaRecorder) {
+        setStatus("Recording unsupported", "warning", 2200);
+        return;
+      }
+
+      const chunks = [];
+      const mimeType = getRecordingMimeType();
+      const recorderOptions = mimeType ? { mimeType } : undefined;
+
+      try {
+        mediaRecorder = new MediaRecorder(recordDestination.stream, recorderOptions);
+      } catch (error) {
+        console.error(error);
+        setStatus("Could not start recorder", "warning", 2200);
+        return;
+      }
+
+      downloadLink.classList.add("hidden");
+      recordButton.disabled = true;
+      recordButton.textContent = "Recording...";
+      setStatus(`Recording ${RECORDING_SECONDS}s clip`, "warning");
+
+      mediaRecorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      });
+
+      mediaRecorder.addEventListener("stop", () => {
+        window.clearTimeout(recordingTimeout);
+        finishRecording(chunks);
+      }, { once: true });
+
+      mediaRecorder.start();
+      recordingTimeout = window.setTimeout(() => {
+        if (mediaRecorder?.state === "recording") {
+          mediaRecorder.stop();
+        }
+      }, RECORDING_SECONDS * 1000);
+    }
+
     async function startAudio() {
       if (audioStarted || audioStarting) {
         return;
@@ -316,7 +750,11 @@
       convolver = audioContext.createConvolver();
       dryGain = audioContext.createGain();
       wetGain = audioContext.createGain();
+      delayNode = audioContext.createDelay(1);
+      delayFeedbackGain = audioContext.createGain();
+      delayWetGain = audioContext.createGain();
       analyser = audioContext.createAnalyser();
+      recordDestination = audioContext.createMediaStreamDestination();
       convolver.buffer = createReverbImpulseResponse(audioContext);
       analyser.fftSize = 1024;
       analyser.smoothingTimeConstant = 0.78;
@@ -327,11 +765,14 @@
 
       oscillator1.frequency.setValueAtTime(currentPitchNote.frequency, now);
       oscillator2.frequency.setValueAtTime(220, now);
-      oscillator1Gain.gain.setValueAtTime(OSCILLATOR_1_GAIN, now);
+      oscillator1Gain.gain.setValueAtTime(0, now);
       oscillator2Gain.gain.setValueAtTime(0, now);
       masterGain.gain.setValueAtTime(0.8, now);
       dryGain.gain.setValueAtTime(1, now);
       wetGain.gain.setValueAtTime(0, now);
+      delayNode.delayTime.setValueAtTime(0.27, now);
+      delayFeedbackGain.gain.setValueAtTime(0.32, now);
+      delayWetGain.gain.setValueAtTime(delayEnabled ? DELAY_WET_GAIN : 0, now);
 
       oscillator1.connect(oscillator1Gain);
       oscillator2.connect(oscillator2Gain);
@@ -339,10 +780,16 @@
       oscillator2Gain.connect(masterGain);
       masterGain.connect(dryGain);
       masterGain.connect(convolver);
+      masterGain.connect(delayNode);
       convolver.connect(wetGain);
+      delayNode.connect(delayFeedbackGain);
+      delayFeedbackGain.connect(delayNode);
+      delayNode.connect(delayWetGain);
       dryGain.connect(analyser);
       wetGain.connect(analyser);
+      delayWetGain.connect(analyser);
       analyser.connect(audioContext.destination);
+      analyser.connect(recordDestination);
 
       oscillator1.start();
       oscillator2.start();
@@ -367,23 +814,26 @@
       }
 
       if (frameTime - lastHandsDetectedTime > NO_HANDS_FADE_DELAY_MS) {
-        rampAudioParam(oscillator1Gain.gain, 0);
-        rampAudioParam(oscillator2Gain.gain, 0);
+        rampAudioParam(oscillator1Gain.gain, 0, RELEASE_SECONDS);
+        rampAudioParam(oscillator2Gain.gain, 0, RELEASE_SECONDS);
         return;
       }
 
-      rampAudioParam(oscillator1Gain.gain, OSCILLATOR_1_GAIN);
+      rampAudioParam(oscillator1Gain.gain, OSCILLATOR_1_GAIN, ATTACK_SECONDS);
 
       if (typeof wristControls.Left?.y === "number") {
-        currentPitchNote = quantizeToPentatonic(mapYToFrequency(wristControls.Left.y));
+        currentPitchNote = quantizeToCurrentScale(mapYToFrequency(wristControls.Left.y));
         rampAudioParam(oscillator1.frequency, currentPitchNote.frequency);
         updateHud();
       }
 
       if (typeof wristControls.Right?.y === "number") {
-        rampAudioParam(oscillator2Gain.gain, mapYToOscillator2Gain(wristControls.Right.y));
+        const rawGain = mapYToOscillator2Gain(wristControls.Right.y);
+        const gatedGain = gateEnabled && rawGain < VOLUME_GATE_THRESHOLD ? 0 : rawGain;
+        const envelopeTime = gatedGain > oscillator2Gain.gain.value ? ATTACK_SECONDS : RELEASE_SECONDS;
+        rampAudioParam(oscillator2Gain.gain, gatedGain, envelopeTime);
       } else {
-        rampAudioParam(oscillator2Gain.gain, 0);
+        rampAudioParam(oscillator2Gain.gain, 0, RELEASE_SECONDS);
       }
 
       if (typeof wristControls.Right?.x === "number") {
@@ -639,7 +1089,7 @@
 
         if (typeof wristControls.Left?.y === "number") {
           lastPitchY = wristControls.Left.y;
-          currentPitchNote = quantizeToPentatonic(mapYToFrequency(wristControls.Left.y));
+          currentPitchNote = quantizeToCurrentScale(mapYToFrequency(wristControls.Left.y));
           pitchColor = getPitchColor(lastPitchY);
           updateHud();
         }
@@ -711,6 +1161,13 @@
         startAudio();
         cycleOscillatorType();
       }
+    });
+    scaleSelect.addEventListener("change", () => setScale(scaleSelect.value));
+    delayToggle.addEventListener("change", () => setDelayEnabled(delayToggle.checked));
+    gateToggle.addEventListener("change", () => setGateEnabled(gateToggle.checked));
+    recordButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      recordClip();
     });
 
     updateHud();
