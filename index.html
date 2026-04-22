@@ -66,46 +66,26 @@
       text-shadow: 0 0 10px rgba(0, 245, 255, 0.58);
     }
 
-    .start-overlay {
-      border: 0;
-      padding: 0;
-      cursor: pointer;
-      font: inherit;
-      user-select: none;
-      background:
-        radial-gradient(circle at 50% 42%, rgba(0, 245, 255, 0.18), transparent 26%),
-        radial-gradient(circle at 48% 52%, rgba(76, 0, 255, 0.34), transparent 44%),
-        #0a0a0f;
-    }
-
-    .start-overlay.hidden {
-      display: none;
-    }
-
-    .start-content {
+    .instructions {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 1;
       display: grid;
-      gap: 16px;
-      place-items: center;
-      padding: 24px;
-    }
-
-    .start-title {
-      color: #f4fbff;
-      font-size: clamp(2.2rem, 8vw, 6.8rem);
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-shadow:
-        0 0 16px rgba(0, 245, 255, 0.95),
-        0 0 46px rgba(76, 0, 255, 0.82),
-        0 0 90px rgba(0, 245, 255, 0.34);
-    }
-
-    .start-subtitle {
-      color: rgba(244, 251, 255, 0.76);
-      font-size: clamp(0.95rem, 2vw, 1.35rem);
-      letter-spacing: 0.22em;
+      gap: 5px;
+      padding: 10px 12px;
+      color: rgba(244, 251, 255, 0.72);
+      background: rgba(10, 10, 15, 0.34);
+      border: 1px solid rgba(244, 251, 255, 0.12);
+      border-radius: 8px;
+      box-shadow: 0 0 24px rgba(76, 0, 255, 0.1);
+      font-size: 11px;
+      line-height: 1.25;
+      letter-spacing: 0.04em;
+      text-align: right;
       text-transform: uppercase;
-      text-shadow: 0 0 18px rgba(0, 245, 255, 0.45);
+      pointer-events: none;
+      backdrop-filter: blur(12px);
     }
 
     video {
@@ -119,13 +99,15 @@
     <div>Note <span id="noteLabel" class="hud-value">A</span></div>
     <div>Octave <span id="octaveLabel" class="hud-value">3</span></div>
     <div>Osc <span id="oscillatorLabel" class="hud-value">sine</span></div>
+    <div>Audio <span id="audioLabel" class="hud-value">click</span></div>
   </div>
-  <button id="startOverlay" class="loading start-overlay hidden" type="button">
-    <span class="start-content">
-      <span class="start-title">✦ AIR THEREMIN ✦</span>
-      <span class="start-subtitle">move your hands to play</span>
-    </span>
-  </button>
+  <div class="instructions" aria-label="Controls">
+    <div>Click: audio</div>
+    <div>Left Y: pitch</div>
+    <div>Right Y: volume</div>
+    <div>Right X: reverb</div>
+    <div>Space: wave</div>
+  </div>
   <video id="webcam" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
@@ -136,10 +118,10 @@
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const loading = document.getElementById("loading");
-    const startOverlay = document.getElementById("startOverlay");
     const noteLabel = document.getElementById("noteLabel");
     const octaveLabel = document.getElementById("octaveLabel");
     const oscillatorLabel = document.getElementById("oscillatorLabel");
+    const audioLabel = document.getElementById("audioLabel");
 
     const HAND_CONNECTIONS = [
       [0, 1], [1, 2], [2, 3], [3, 4],
@@ -199,6 +181,7 @@
     let analyser;
     let waveformData;
     let audioStarted = false;
+    let audioStarting = false;
     let lastPitchY = 0.5;
     let currentPitchNote = A_MINOR_PENTATONIC[5];
     let oscillatorTypeIndex = 0;
@@ -310,13 +293,15 @@
     }
 
     async function startAudio() {
-      if (audioStarted) {
+      if (audioStarted || audioStarting) {
         return;
       }
 
+      audioStarting = true;
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) {
-        startOverlay.textContent = "Web Audio is not supported in this browser.";
+        audioStarting = false;
+        audioLabel.textContent = "unsupported";
         return;
       }
 
@@ -367,8 +352,9 @@
       }
 
       audioStarted = true;
+      audioStarting = false;
       lastHandsDetectedTime = performance.now();
-      startOverlay.classList.add("hidden");
+      audioLabel.textContent = "on";
     }
 
     function updateAudio(wristControls, handsDetected, frameTime) {
@@ -714,18 +700,18 @@
       });
 
       loading.classList.add("hidden");
-      startOverlay.classList.remove("hidden");
       renderFrame();
     }
 
     window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("pointerdown", startAudio);
     window.addEventListener("keydown", (event) => {
       if (event.code === "Space") {
         event.preventDefault();
+        startAudio();
         cycleOscillatorType();
       }
     });
-    startOverlay.addEventListener("click", startAudio);
 
     updateHud();
 
