@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hand Theremin Tracker</title>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #0a0a0f;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #0a0a0f;
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #f4fbff;
+      background: radial-gradient(circle at center, #13202b 0%, #0a0a0f 72%);
+      font-size: clamp(1.2rem, 2vw, 2rem);
+      letter-spacing: 0;
+      z-index: 2;
+      transition: opacity 180ms ease;
+    }
+
+    .loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .hud {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 1;
+      display: grid;
+      gap: 5px;
+      min-width: 132px;
+      padding: 10px 12px;
+      color: rgba(244, 251, 255, 0.9);
+      background: rgba(10, 10, 15, 0.44);
+      border: 1px solid rgba(0, 245, 255, 0.22);
+      border-radius: 8px;
+      box-shadow: 0 0 28px rgba(0, 245, 255, 0.12);
+      font-size: 12px;
+      line-height: 1.2;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      backdrop-filter: blur(14px);
+    }
+
+    .hud-value {
+      color: #f4fbff;
+      text-shadow: 0 0 10px rgba(0, 245, 255, 0.58);
+    }
+
+    .start-overlay {
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      user-select: none;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(0, 245, 255, 0.18), transparent 26%),
+        radial-gradient(circle at 48% 52%, rgba(76, 0, 255, 0.34), transparent 44%),
+        #0a0a0f;
+    }
+
+    .start-overlay.hidden {
+      display: none;
+    }
+
+    .start-content {
+      display: grid;
+      gap: 16px;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .start-title {
+      color: #f4fbff;
+      font-size: clamp(2.2rem, 8vw, 6.8rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-shadow:
+        0 0 16px rgba(0, 245, 255, 0.95),
+        0 0 46px rgba(76, 0, 255, 0.82),
+        0 0 90px rgba(0, 245, 255, 0.34);
+    }
+
+    .start-subtitle {
+      color: rgba(244, 251, 255, 0.76);
+      font-size: clamp(0.95rem, 2vw, 1.35rem);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(0, 245, 255, 0.45);
+    }
+
+    video {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">Loading model...</div>
+  <div id="hud" class="hud">
+    <div>Note <span id="noteLabel" class="hud-value">A</span></div>
+    <div>Octave <span id="octaveLabel" class="hud-value">3</span></div>
+    <div>Osc <span id="oscillatorLabel" class="hud-value">sine</span></div>
+  </div>
+  <button id="startOverlay" class="loading start-overlay hidden" type="button">
+    <span class="start-content">
+      <span class="start-title">✦ AIR THEREMIN ✦</span>
+      <span class="start-subtitle">move your hands to play</span>
+    </span>
+  </button>
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <script type="module">
+    import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.js";
+
+    const video = document.getElementById("webcam");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const loading = document.getElementById("loading");
+    const startOverlay = document.getElementById("startOverlay");
+    const noteLabel = document.getElementById("noteLabel");
+    const octaveLabel = document.getElementById("octaveLabel");
+    const oscillatorLabel = document.getElementById("oscillatorLabel");
+
+    const HAND_CONNECTIONS = [
+      [0, 1], [1, 2], [2, 3], [3, 4],
+      [0, 5], [5, 6], [6, 7], [7, 8],
+      [5, 9], [9, 10], [10, 11], [11, 12],
+      [9, 13], [13, 14], [14, 15], [15, 16],
+      [13, 17], [17, 18], [18, 19], [19, 20],
+      [0, 17]
+    ];
+
+    const MIN_FREQUENCY = 110;
+    const MAX_FREQUENCY = 880;
+    const MAX_OSCILLATOR_2_GAIN = 0.8;
+    const MAX_REVERB_MIX = 0.6;
+    const OSCILLATOR_1_GAIN = 0.18;
+    const RAMP_SECONDS = 0.05;
+    const NO_HANDS_FADE_DELAY_MS = 200;
+    const A_MINOR_PENTATONIC = [
+      { frequency: 110, note: "A", octave: 2 },
+      { frequency: 130.8, note: "C", octave: 3 },
+      { frequency: 146.8, note: "D", octave: 3 },
+      { frequency: 164.8, note: "E", octave: 3 },
+      { frequency: 196, note: "G", octave: 3 },
+      { frequency: 220, note: "A", octave: 3 },
+      { frequency: 261.6, note: "C", octave: 4 },
+      { frequency: 293.7, note: "D", octave: 4 },
+      { frequency: 329.6, note: "E", octave: 4 },
+      { frequency: 392, note: "G", octave: 4 },
+      { frequency: 440, note: "A", octave: 4 },
+      { frequency: 523.3, note: "C", octave: 5 },
+      { frequency: 587.3, note: "D", octave: 5 },
+      { frequency: 659.3, note: "E", octave: 5 },
+      { frequency: 784, note: "G", octave: 5 },
+      { frequency: 880, note: "A", octave: 5 }
+    ];
+    const OSCILLATOR_TYPES = ["sine", "triangle", "sawtooth"];
+    const DARK_BACKGROUND = "#0a0a0f";
+    const DEEP_VIOLET = { r: 76, g: 0, b: 255 };
+    const ELECTRIC_CYAN = { r: 0, g: 245, b: 255 };
+    const FINGERTIP_INDICES = [4, 8, 12, 16, 20];
+    const MAX_TRAIL_POINTS = 15;
+    const RING_LIFETIME_FRAMES = 40;
+    const RING_SPAWN_INTERVAL = 13;
+
+    let handLandmarker;
+    let canvasWidth = 0;
+    let canvasHeight = 0;
+    let audioContext;
+    let oscillator1;
+    let oscillator2;
+    let oscillator1Gain;
+    let oscillator2Gain;
+    let masterGain;
+    let convolver;
+    let dryGain;
+    let wetGain;
+    let analyser;
+    let waveformData;
+    let audioStarted = false;
+    let lastPitchY = 0.5;
+    let currentPitchNote = A_MINOR_PENTATONIC[5];
+    let oscillatorTypeIndex = 0;
+    let lastHandsDetectedTime = 0;
+    let frameCount = 0;
+    const fingertipTrails = new Map();
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function lerp(start, end, amount) {
+      return start + (end - start) * amount;
+    }
+
+    function getPitchColor(y) {
+      const highPitchAmount = 1 - clamp(y, 0, 1);
+
+      return {
+        r: Math.round(lerp(DEEP_VIOLET.r, ELECTRIC_CYAN.r, highPitchAmount)),
+        g: Math.round(lerp(DEEP_VIOLET.g, ELECTRIC_CYAN.g, highPitchAmount)),
+        b: Math.round(lerp(DEEP_VIOLET.b, ELECTRIC_CYAN.b, highPitchAmount))
+      };
+    }
+
+    function colorToCss(color, alpha = 1) {
+      return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+    }
+
+    function mapYToFrequency(y) {
+      const clampedY = clamp(y, 0, 1);
+      return MAX_FREQUENCY * (MIN_FREQUENCY / MAX_FREQUENCY) ** clampedY;
+    }
+
+    function quantizeToPentatonic(frequency) {
+      return A_MINOR_PENTATONIC.reduce((closest, candidate) => {
+        return Math.abs(candidate.frequency - frequency) < Math.abs(closest.frequency - frequency)
+          ? candidate
+          : closest;
+      }, A_MINOR_PENTATONIC[0]);
+    }
+
+    function mapYToOscillator2Gain(y) {
+      return clamp(y, 0, 1) * MAX_OSCILLATOR_2_GAIN;
+    }
+
+    function mapXToReverbMix(x) {
+      return clamp(x, 0, 1) * MAX_REVERB_MIX;
+    }
+
+    function updateHud() {
+      noteLabel.textContent = currentPitchNote.note;
+      octaveLabel.textContent = String(currentPitchNote.octave);
+      oscillatorLabel.textContent = OSCILLATOR_TYPES[oscillatorTypeIndex];
+    }
+
+    function rampAudioParam(audioParam, value) {
+      if (!audioContext) {
+        return;
+      }
+
+      const now = audioContext.currentTime;
+      if (typeof audioParam.cancelAndHoldAtTime === "function") {
+        audioParam.cancelAndHoldAtTime(now);
+      } else {
+        const currentValue = audioParam.value;
+        audioParam.cancelScheduledValues(now);
+        audioParam.setValueAtTime(currentValue, now);
+      }
+
+      audioParam.linearRampToValueAtTime(value, now + RAMP_SECONDS);
+    }
+
+    function createReverbImpulseResponse(context) {
+      const duration = 2.2;
+      const length = Math.floor(context.sampleRate * duration);
+      const impulse = context.createBuffer(2, length, context.sampleRate);
+
+      for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+        const impulseData = impulse.getChannelData(channel);
+
+        for (let i = 0; i < length; i += 1) {
+          const progress = i / length;
+          const decay = (1 - progress) ** 2.6;
+          impulseData[i] = (Math.random() * 2 - 1) * decay;
+        }
+      }
+
+      return impulse;
+    }
+
+    function applyOscillatorType() {
+      const oscillatorType = OSCILLATOR_TYPES[oscillatorTypeIndex];
+
+      if (oscillator1) {
+        oscillator1.type = oscillatorType;
+      }
+
+      if (oscillator2) {
+        oscillator2.type = oscillatorType;
+      }
+
+      updateHud();
+    }
+
+    function cycleOscillatorType() {
+      oscillatorTypeIndex = (oscillatorTypeIndex + 1) % OSCILLATOR_TYPES.length;
+      applyOscillatorType();
+    }
+
+    async function startAudio() {
+      if (audioStarted) {
+        return;
+      }
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        startOverlay.textContent = "Web Audio is not supported in this browser.";
+        return;
+      }
+
+      audioContext = new AudioContextClass();
+      const now = audioContext.currentTime;
+
+      oscillator1 = audioContext.createOscillator();
+      oscillator2 = audioContext.createOscillator();
+      oscillator1Gain = audioContext.createGain();
+      oscillator2Gain = audioContext.createGain();
+      masterGain = audioContext.createGain();
+      convolver = audioContext.createConvolver();
+      dryGain = audioContext.createGain();
+      wetGain = audioContext.createGain();
+      analyser = audioContext.createAnalyser();
+      convolver.buffer = createReverbImpulseResponse(audioContext);
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.78;
+      waveformData = new Uint8Array(analyser.fftSize);
+
+      oscillator1.type = OSCILLATOR_TYPES[oscillatorTypeIndex];
+      oscillator2.type = OSCILLATOR_TYPES[oscillatorTypeIndex];
+
+      oscillator1.frequency.setValueAtTime(currentPitchNote.frequency, now);
+      oscillator2.frequency.setValueAtTime(220, now);
+      oscillator1Gain.gain.setValueAtTime(OSCILLATOR_1_GAIN, now);
+      oscillator2Gain.gain.setValueAtTime(0, now);
+      masterGain.gain.setValueAtTime(0.8, now);
+      dryGain.gain.setValueAtTime(1, now);
+      wetGain.gain.setValueAtTime(0, now);
+
+      oscillator1.connect(oscillator1Gain);
+      oscillator2.connect(oscillator2Gain);
+      oscillator1Gain.connect(masterGain);
+      oscillator2Gain.connect(masterGain);
+      masterGain.connect(dryGain);
+      masterGain.connect(convolver);
+      convolver.connect(wetGain);
+      dryGain.connect(analyser);
+      wetGain.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      oscillator1.start();
+      oscillator2.start();
+
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
+
+      audioStarted = true;
+      lastHandsDetectedTime = performance.now();
+      startOverlay.classList.add("hidden");
+    }
+
+    function updateAudio(wristControls, handsDetected, frameTime) {
+      if (!audioStarted || !audioContext) {
+        return;
+      }
+
+      if (handsDetected) {
+        lastHandsDetectedTime = frameTime;
+      }
+
+      if (frameTime - lastHandsDetectedTime > NO_HANDS_FADE_DELAY_MS) {
+        rampAudioParam(oscillator1Gain.gain, 0);
+        rampAudioParam(oscillator2Gain.gain, 0);
+        return;
+      }
+
+      rampAudioParam(oscillator1Gain.gain, OSCILLATOR_1_GAIN);
+
+      if (typeof wristControls.Left?.y === "number") {
+        currentPitchNote = quantizeToPentatonic(mapYToFrequency(wristControls.Left.y));
+        rampAudioParam(oscillator1.frequency, currentPitchNote.frequency);
+        updateHud();
+      }
+
+      if (typeof wristControls.Right?.y === "number") {
+        rampAudioParam(oscillator2Gain.gain, mapYToOscillator2Gain(wristControls.Right.y));
+      } else {
+        rampAudioParam(oscillator2Gain.gain, 0);
+      }
+
+      if (typeof wristControls.Right?.x === "number") {
+        const wetMix = mapXToReverbMix(wristControls.Right.x);
+        rampAudioParam(dryGain.gain, 1 - wetMix);
+        rampAudioParam(wetGain.gain, wetMix);
+      } else {
+        rampAudioParam(dryGain.gain, 1);
+        rampAudioParam(wetGain.gain, 0);
+      }
+    }
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.round(window.innerWidth * dpr);
+      const height = Math.round(window.innerHeight * dpr);
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      canvasWidth = canvas.width;
+      canvasHeight = canvas.height;
+    }
+
+    function getVideoBox() {
+      if (!video.videoWidth || !video.videoHeight) {
+        return;
+      }
+
+      const videoRatio = video.videoWidth / video.videoHeight;
+      const canvasRatio = canvasWidth / canvasHeight;
+      let drawWidth = canvasWidth;
+      let drawHeight = canvasHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (videoRatio > canvasRatio) {
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * videoRatio;
+        offsetX = (canvasWidth - drawWidth) / 2;
+      } else {
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / videoRatio;
+        offsetY = (canvasHeight - drawHeight) / 2;
+      }
+
+      return { drawWidth, drawHeight, offsetX, offsetY };
+    }
+
+    function landmarkToCanvasPoint(landmark, videoBox) {
+      return {
+        x: canvasWidth - (videoBox.offsetX + landmark.x * videoBox.drawWidth),
+        y: videoBox.offsetY + landmark.y * videoBox.drawHeight
+      };
+    }
+
+    function getHandedness(results, index) {
+      const categories = results.handedness?.[index] || results.handednesses?.[index];
+      return categories?.[0]?.categoryName;
+    }
+
+    function drawHand(landmarks, videoBox, color) {
+      const lineColor = colorToCss(color, 0.72);
+      const dotColor = colorToCss(color);
+
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = dotColor;
+
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = Math.max(2, canvasWidth * 0.003);
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      for (const [startIndex, endIndex] of HAND_CONNECTIONS) {
+        const start = landmarkToCanvasPoint(landmarks[startIndex], videoBox);
+        const end = landmarkToCanvasPoint(landmarks[endIndex], videoBox);
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+      }
+      ctx.stroke();
+
+      const radius = Math.max(4, canvasWidth * 0.0055);
+      ctx.fillStyle = dotColor;
+      ctx.shadowBlur = 22;
+      for (const landmark of landmarks) {
+        const point = landmarkToCanvasPoint(landmark, videoBox);
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function updateFingertipTrails(results, videoBox) {
+      results.landmarks.forEach((landmarks, handIndex) => {
+        const handedness = getHandedness(results, handIndex) || `Hand${handIndex}`;
+
+        FINGERTIP_INDICES.forEach((tipIndex) => {
+          const point = landmarkToCanvasPoint(landmarks[tipIndex], videoBox);
+          const trailKey = `${handedness}-${tipIndex}`;
+          const trail = fingertipTrails.get(trailKey) || [];
+
+          trail.push({ ...point, frame: frameCount });
+          fingertipTrails.set(trailKey, trail.slice(-MAX_TRAIL_POINTS));
+        });
+      });
+    }
+
+    function drawFingertipTrails(color) {
+      ctx.save();
+      ctx.shadowColor = colorToCss(color);
+      ctx.shadowBlur = 16;
+
+      for (const [trailKey, trail] of fingertipTrails) {
+        const visibleTrail = trail.filter((point) => frameCount - point.frame < MAX_TRAIL_POINTS);
+
+        if (visibleTrail.length === 0) {
+          fingertipTrails.delete(trailKey);
+          continue;
+        }
+
+        fingertipTrails.set(trailKey, visibleTrail);
+
+        visibleTrail.forEach((point, index) => {
+          const ageFromNewest = visibleTrail.length - 1 - index;
+          const alpha = (1 - ageFromNewest / MAX_TRAIL_POINTS) * 0.55;
+          const radius = Math.max(2, canvasWidth * 0.0028) * (1 - ageFromNewest / (MAX_TRAIL_POINTS * 1.4));
+
+          ctx.fillStyle = colorToCss(color, alpha);
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      ctx.restore();
+    }
+
+    function getWristPoints(results, videoBox) {
+      return results.landmarks.map((landmarks) => landmarkToCanvasPoint(landmarks[0], videoBox));
+    }
+
+    function drawSoundRings(wristPoints, color) {
+      if (wristPoints.length === 0) {
+        return;
+      }
+
+      const maxRadius = Math.min(canvasWidth, canvasHeight) * 0.16;
+
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.shadowColor = colorToCss(color);
+      ctx.shadowBlur = 20;
+
+      wristPoints.forEach((wristPoint) => {
+        for (let ringIndex = 0; ringIndex < 3; ringIndex += 1) {
+          const age = (frameCount + ringIndex * RING_SPAWN_INTERVAL) % RING_LIFETIME_FRAMES;
+          const progress = age / RING_LIFETIME_FRAMES;
+          const alpha = (1 - progress) * 0.42;
+          const radius = Math.max(12, canvasWidth * 0.012) + progress * maxRadius;
+
+          ctx.strokeStyle = colorToCss(color, alpha);
+          ctx.lineWidth = Math.max(1.5, canvasWidth * 0.0024) * (1 - progress * 0.45);
+          ctx.beginPath();
+          ctx.arc(wristPoint.x, wristPoint.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+
+      ctx.restore();
+    }
+
+    function drawWaveformVisualizer(color) {
+      if (!analyser || !waveformData) {
+        return;
+      }
+
+      analyser.getByteTimeDomainData(waveformData);
+
+      const centerX = canvasWidth / 2;
+      const radius = Math.min(canvasWidth * 0.48, canvasHeight * 0.55);
+      const centerY = canvasHeight + radius * 0.16;
+      const startAngle = Math.PI * 1.08;
+      const endAngle = Math.PI * 1.92;
+      const amplitude = canvasHeight * 0.075;
+
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = colorToCss(color);
+      ctx.shadowBlur = 24;
+      ctx.strokeStyle = colorToCss(color, 0.78);
+      ctx.lineWidth = Math.max(2, canvasWidth * 0.0032);
+      ctx.beginPath();
+
+      for (let i = 0; i < waveformData.length; i += 1) {
+        const sample = (waveformData[i] - 128) / 128;
+        const amount = i / (waveformData.length - 1);
+        const angle = lerp(startAngle, endAngle, amount);
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius + sample * amplitude;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function getWristControls(results, videoBox) {
+      const wristControls = {
+        Left: undefined,
+        Right: undefined
+      };
+
+      results.landmarks.forEach((landmarks, index) => {
+        const handedness = getHandedness(results, index);
+
+        if (handedness === "Left" || handedness === "Right") {
+          const wristPoint = landmarkToCanvasPoint(landmarks[0], videoBox);
+
+          wristControls[handedness] = {
+            x: clamp(wristPoint.x / canvasWidth, 0, 1),
+            y: landmarks[0]?.y
+          };
+        }
+      });
+
+      return wristControls;
+    }
+
+    function renderFrame() {
+      frameCount += 1;
+      const frameTime = performance.now();
+      resizeCanvas();
+      ctx.fillStyle = DARK_BACKGROUND;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      const videoBox = getVideoBox();
+      let pitchColor = getPitchColor(lastPitchY);
+
+      if (handLandmarker && videoBox) {
+        const results = handLandmarker.detectForVideo(video, frameTime);
+        const wristControls = getWristControls(results, videoBox);
+
+        if (typeof wristControls.Left?.y === "number") {
+          lastPitchY = wristControls.Left.y;
+          currentPitchNote = quantizeToPentatonic(mapYToFrequency(wristControls.Left.y));
+          pitchColor = getPitchColor(lastPitchY);
+          updateHud();
+        }
+
+        console.log("Wrist Y positions", {
+          Left: wristControls.Left?.y,
+          Right: wristControls.Right?.y
+        });
+        updateAudio(wristControls, results.landmarks.length > 0, frameTime);
+        updateFingertipTrails(results, videoBox);
+
+        drawSoundRings(getWristPoints(results, videoBox), pitchColor);
+        drawFingertipTrails(pitchColor);
+
+        results.landmarks.forEach((landmarks) => {
+          drawHand(landmarks, videoBox, pitchColor);
+        });
+      } else {
+        drawFingertipTrails(pitchColor);
+      }
+
+      drawWaveformVisualizer(pitchColor);
+      requestAnimationFrame(renderFrame);
+    }
+
+    async function initialize() {
+      resizeCanvas();
+
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numHands: 2
+      });
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      video.srcObject = stream;
+
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve();
+        };
+      });
+
+      loading.classList.add("hidden");
+      startOverlay.classList.remove("hidden");
+      renderFrame();
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        cycleOscillatorType();
+      }
+    });
+    startOverlay.addEventListener("click", startAudio);
+
+    updateHud();
+
+    initialize().catch((error) => {
+      console.error(error);
+      loading.textContent = "Could not initialize webcam or hand tracking.";
+    });
+  </script>
+</body>
+</html>
