@@ -11,7 +11,13 @@
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background: #0a0a0f;
+      background-color: #0a0a0f;
+      background-image:
+        linear-gradient(rgba(10, 10, 15, 0.56), rgba(10, 10, 15, 0.72)),
+        url("assets/aphrodite.png");
+      background-position: center, center;
+      background-repeat: no-repeat, no-repeat;
+      background-size: auto, cover;
       font-family: Arial, Helvetica, sans-serif;
     }
 
@@ -19,7 +25,7 @@
       display: block;
       width: 100vw;
       height: 100vh;
-      background: #0a0a0f;
+      background: transparent;
       touch-action: manipulation;
     }
 
@@ -435,7 +441,6 @@
       }
     };
     const OSCILLATOR_TYPES = ["sine", "triangle", "sawtooth"];
-    const DARK_BACKGROUND = "#0a0a0f";
     const DEEP_VIOLET = { r: 76, g: 0, b: 255 };
     const ELECTRIC_CYAN = { r: 0, g: 245, b: 255 };
     const FINGERTIP_INDICES = [4, 8, 12, 16, 20];
@@ -1077,8 +1082,7 @@
       frameCount += 1;
       const frameTime = performance.now();
       resizeCanvas();
-      ctx.fillStyle = DARK_BACKGROUND;
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
       const videoBox = getVideoBox();
       let pitchColor = getPitchColor(lastPitchY);
